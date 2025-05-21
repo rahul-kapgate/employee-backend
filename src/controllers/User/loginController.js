@@ -8,28 +8,36 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 export const loginUser = async (req, res) => {
   try {
-    const { mobile, password } = req.body;
+    const { identifier, password } = req.body;
 
     // Validate input
-    if (!mobile || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Check if user exists
-    const user = await User.findOne({ mobile });
+    // Find user by mobile or username
+    const user = await User.findOne({
+      $or: [{ mobile: identifier }, { username: identifier }],
+    });
+
     if (!user) {
-      return res.status(401).json({ message: "Invalid mobile or password" });
+      return res.status(401).json({ message: "Invalid credentials: user not found" });
     }
 
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid mobile or password" });
+      console.log("Entered password:", password);
+      console.log("Hashed password in DB:", user.password);
+      console.log("Password matched:", isMatch);
+
+
+      return res.status(401).json({ message: "Invalid credentials: not match" });
     }
 
     // Generate JWT Token
     const token = jwt.sign(
-      { userId: user._id, mobile: user.mobile },
+      { userId: user._id, mobile: user.mobile, username: user.username },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -39,9 +47,8 @@ export const loginUser = async (req, res) => {
       token,
       user: {
         id: user._id,
-        fname: user.fname,
-        lname: user.lname,
-        mobile: user.mobile,
+        username: user.username,
+        mobile: user.mobile
       },
     });
   } catch (error) {
