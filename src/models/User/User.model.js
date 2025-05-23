@@ -12,30 +12,45 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  username: { type: String, unique: true, required: true, trim: true },
-  mobile: {
+  username: {
+    type: String,
+    unique: true,
+    trim: true,
+    sparse: true, // Allows optional unique
+  },
+  email: {
     type: String,
     required: true,
     unique: true,
     trim: true,
+    lowercase: true,
+  },
+  mobile: {
+    type: String,
+    trim: true,
+    unique: true,
+    sparse: true, // Allows optional mobile field
   },
   password: {
     type: String,
     required: true,
   },
-  isVerified: { type: Boolean, default: false },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-// Pre-save middleware to hash password
+// 🔐 Pre-save middleware to hash password if modified
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next(); 
+  if (!this.isModified("password")) return next();
 
   try {
-    const salt = await bcrypt.genSalt(10); 
+    const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (err) {
