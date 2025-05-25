@@ -14,20 +14,16 @@ export const sendOtpToEmail = async (email, otp) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: "Your Verification Code from Employee App",
-    text: `Hello,
+    subject: "Verification Code - Employee App",
+    text: `Dear User,
 
-Thank you for registering with Employee App. 
+Your One-Time Password (OTP) is: ${otp}
 
-Your One-Time Password (OTP) to complete the verification process is:
+This code is valid for 5 minutes. Please do not share it with anyone.
 
-${otp}
+If you did not request this, please disregard this message.
 
-This code is valid for the next 5 minutes. Please do not share this code with anyone.
-
-If you did not request this, please ignore this email.
-
-Best regards,
+Best regards,  
 Employee App Team`,
   };
 
