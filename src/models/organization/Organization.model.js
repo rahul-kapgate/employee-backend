@@ -33,6 +33,8 @@ const organizationSchema = new mongoose.Schema({
   contactPerson: {
     name: { type: String, required: true, trim: true },
     designation: { type: String, trim: true },
+
+
   },
   website: {
     type: String,

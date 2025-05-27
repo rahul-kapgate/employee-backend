@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import Organization from "../../models/organization/Organization.model.js";
 import { storeOtp, getOtpData } from "../../utils/otpStore.js";
 import { sendOtpToEmail } from "../../utils/emailService.js";
-
+import User from "../../models/User/User.model.js";
 // 1. Initiate Organization Signup (generate OTP, hash password, store in Redis)
 export const initiateOrgSignup = async (req, res) => {
   const {
@@ -54,7 +54,7 @@ export const initiateOrgSignup = async (req, res) => {
   }
 };
 
-// 2. Verify OTP & Create Organization in MongoDB
+// 2. Verify OTP & Create Organization and Admin
 export const verifyOrgOtpAndCreate = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -69,7 +69,7 @@ export const verifyOrgOtpAndCreate = async (req, res) => {
       return res.status(401).json({ message: "Invalid or expired OTP" });
     }
 
-    // Check if org already exists by email or phone
+    // Check if org already exists
     const existingOrg = await Organization.findOne({
       $or: [{ email }, { phone: orgData.phone }],
     });
@@ -78,7 +78,7 @@ export const verifyOrgOtpAndCreate = async (req, res) => {
       return res.status(409).json({ message: "Organization already exists" });
     }
 
-    // Create new organization document
+    // Create Organization
     const newOrg = new Organization({
       orgName: orgData.orgName,
       industry: orgData.industry,
@@ -88,20 +88,37 @@ export const verifyOrgOtpAndCreate = async (req, res) => {
       address: orgData.address,
       contactPerson: orgData.contactPerson,
       website: orgData.website,
-      password: orgData.password, // already hashed
+      password: orgData.password,
       additionalNotes: orgData.additionalNotes,
     });
 
-    await newOrg.save();
+    const savedOrg = await newOrg.save();
 
-    res.status(201).json({ message: "Organization created successfully" });
+    // ✅ Create User with admin role
+    const adminUser = new User({
+      name: orgData.contactPerson.name,
+      email: orgData.email,
+      phone: orgData.phone,
+      password: orgData.password,
+      role: "admin",
+      organizationId: savedOrg._id,
+    });
+
+    await adminUser.save();
+
+    res.status(201).json({
+      message: "Organization and admin user created successfully",
+      organizationId: savedOrg._id,
+      adminEmail: adminUser.email,
+    });
   } catch (err) {
     console.error("❌ verifyOrgOtpAndCreate error:", err);
     res.status(500).json({ message: "Server error during signup" });
   }
 };
 
-// 3. Get all organizations (optional, for admin use)
+
+// 3. Get all organizations (for admin panel)
 export const getAllOrganizations = async (req, res) => {
   try {
     const orgs = await Organization.find().select("-password");
@@ -116,8 +133,9 @@ export const getAllOrganizations = async (req, res) => {
 export const getOrganizationById = async (req, res) => {
   try {
     const org = await Organization.findById(req.params.id).select("-password");
-    if (!org)
+    if (!org) {
       return res.status(404).json({ message: "Organization not found" });
+    }
     res.status(200).json(org);
   } catch (err) {
     console.error("❌ getOrganizationById error:", err);
@@ -125,22 +143,23 @@ export const getOrganizationById = async (req, res) => {
   }
 };
 
-// 5. Update organization info by ID (excluding password)
+// 5. Update organization (excluding password update)
 export const updateOrganization = async (req, res) => {
   try {
     const updateData = { ...req.body };
-    delete updateData.password; // prevent password update here
+    delete updateData.password;
 
-    const org = await Organization.findByIdAndUpdate(
+    const updatedOrg = await Organization.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
     ).select("-password");
 
-    if (!org)
+    if (!updatedOrg) {
       return res.status(404).json({ message: "Organization not found" });
+    }
 
-    res.status(200).json({ message: "Organization updated", org });
+    res.status(200).json({ message: "Organization updated", org: updatedOrg });
   } catch (err) {
     console.error("❌ updateOrganization error:", err);
     res.status(500).json({ message: "Failed to update organization" });
@@ -150,9 +169,10 @@ export const updateOrganization = async (req, res) => {
 // 6. Delete organization by ID
 export const deleteOrganization = async (req, res) => {
   try {
-    const org = await Organization.findByIdAndDelete(req.params.id);
-    if (!org)
+    const deletedOrg = await Organization.findByIdAndDelete(req.params.id);
+    if (!deletedOrg) {
       return res.status(404).json({ message: "Organization not found" });
+    }
     res.status(200).json({ message: "Organization deleted" });
   } catch (err) {
     console.error("❌ deleteOrganization error:", err);

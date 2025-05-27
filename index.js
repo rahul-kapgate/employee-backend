@@ -15,7 +15,7 @@ connectDB();
 
 
 // Route
-app.use("/api", authRoutes);
+app.use("/api/user", authRoutes);
 app.use("/api/org/", organizationRoutes)
 
 app.get("/", (req, res) => {
