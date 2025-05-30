@@ -7,6 +7,7 @@ import {
   updateOrganization,
   deleteOrganization,
 } from "../controllers/Organization/organizationController.js";
+import { employeSignup } from "../controllers/employee/employeeController.js";
 
 const router = express.Router();
 
@@ -17,5 +18,7 @@ router.get("/", getAllOrganizations);
 router.get("/:id", getOrganizationById);
 router.put("/:id", updateOrganization);
 router.delete("/:id", deleteOrganization);
+
+router.post("/signup/employee", employeSignup);
 
 export default router;
